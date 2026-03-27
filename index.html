@@ -61,6 +61,14 @@
   thead tr { background: #1F4E79; color: white; }
   th { padding: 12px 10px; text-align: left; font-weight: 600; white-space: nowrap; font-size: 13px; }
   td { padding: 10px; vertical-align: middle; border-bottom: 1px solid #e9edf2; }
+  /* Sticky "Hạng mục công việc" column (3rd col) when scrolling horizontally */
+  th:nth-child(3), td:nth-child(3) {
+    position: sticky; left: 0; z-index: 2;
+    background: white;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.08);
+  }
+  thead th:nth-child(3) { background: #1F4E79; z-index: 3; }
+  .total-row td:nth-child(3) { background: #1F4E79 !important; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: #f7fafc; }
 
