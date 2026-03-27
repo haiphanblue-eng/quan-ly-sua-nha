@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản lý sửa nhà</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a202c; min-height: 100vh; }
+
+  /* ── Config Banner ── */
+  #config-banner {
+    background: #fff3cd; border-bottom: 2px solid #ffc107;
+    padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+    font-size: 14px;
+  }
+  #config-banner.hidden { display: none; }
+  #config-banner strong { color: #856404; }
+  #config-banner a { color: #0d6efd; }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #1F4E79, #2e6da4);
+    color: white; padding: 20px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.3px; }
+  header p  { font-size: 13px; opacity: 0.8; margin-top: 2px; }
+  .header-stats { display: flex; gap: 16px; }
+  .stat { text-align: center; background: rgba(255,255,255,0.15); border-radius: 8px; padding: 8px 16px; }
+  .stat .num { font-size: 20px; font-weight: 700; }
+  .stat .lbl { font-size: 11px; opacity: 0.85; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    background: white; border-bottom: 1px solid #e2e8f0;
+    padding: 12px 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  }
+  .toolbar select, .toolbar input {
+    border: 1px solid #cbd5e0; border-radius: 6px; padding: 7px 12px;
+    font-size: 14px; background: white; color: #2d3748; outline: none;
+  }
+  .toolbar select:focus, .toolbar input:focus { border-color: #2e6da4; box-shadow: 0 0 0 2px rgba(46,109,164,0.15); }
+  .btn {
+    padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 600; transition: all 0.15s;
+  }
+  .btn-primary { background: #1F4E79; color: white; }
+  .btn-primary:hover { background: #163d61; }
+  .btn-success { background: #28a745; color: white; }
+  .btn-success:hover { background: #1e7e34; }
+  .btn-danger  { background: #dc3545; color: white; font-size: 12px; padding: 4px 10px; }
+  .btn-danger:hover { background: #b02a37; }
+  .spacer { flex: 1; }
+
+  /* ── Table Container ── */
+  .table-wrap { overflow-x: auto; padding: 16px 20px; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); font-size: 14px; }
+  thead tr { background: #1F4E79; color: white; }
+  th { padding: 12px 10px; text-align: left; font-weight: 600; white-space: nowrap; font-size: 13px; }
+  td { padding: 10px; vertical-align: middle; border-bottom: 1px solid #e9edf2; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #f7fafc; }
+
+  /* ── Status Badges ── */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .badge-chua-trao-doi  { background: #fce8e6; color: #c0392b; }
+  .badge-da-trao-doi    { background: #fef9e7; color: #b7950b; }
+  .badge-khong-can      { background: #eaecee; color: #566573; }
+  .badge-chua-lam       { background: #fce8e6; color: #c0392b; }
+  .badge-dang-lam       { background: #fef9e7; color: #b7950b; }
+  .badge-hoan-thanh     { background: #eafaf1; color: #1e8449; }
+
+  /* ── Inline Select ── */
+  .inline-select {
+    border: none; background: transparent; font-size: 12px; font-weight: 600;
+    cursor: pointer; outline: none; width: 100%;
+    padding: 2px 4px; border-radius: 6px;
+  }
+  .inline-select:focus { background: white; border: 1px solid #2e6da4; box-shadow: 0 0 0 2px rgba(46,109,164,0.15); }
+
+  /* ── Area Tag ── */
+  .area-tag {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .area-wc       { background: #d6eaf8; color: #1a5276; }
+  .area-bep      { background: #d5f5e3; color: #1e8449; }
+  .area-phong-ngu{ background: #f9ebea; color: #922b21; }
+  .area-chung    { background: #fef9e7; color: #7d6608; }
+  .area-other    { background: #eaecee; color: #424949; }
+
+  /* ── Currency ── */
+  .currency { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ── Notes cell ── */
+  .cell-note { max-width: 180px; }
+  .cell-note span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+
+  /* ── Total Row ── */
+  .total-row td { background: #1F4E79 !important; color: white !important; font-weight: 700; border: none; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 1000;
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: 12px; width: 100%; max-width: 560px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2); overflow: hidden;
+  }
+  .modal-header {
+    background: #1F4E79; color: white; padding: 16px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-header h2 { font-size: 16px; }
+  .modal-close { background: none; border: none; color: white; font-size: 22px; cursor: pointer; line-height: 1; }
+  .modal-body { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group label { font-size: 12px; font-weight: 600; color: #4a5568; }
+  .form-group input, .form-group select, .form-group textarea {
+    border: 1px solid #cbd5e0; border-radius: 6px; padding: 8px 10px;
+    font-size: 14px; outline: none; font-family: inherit;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: #2e6da4; box-shadow: 0 0 0 2px rgba(46,109,164,0.15);
+  }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+  .modal-footer { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; }
+
+  /* ── Loading ── */
+  #loading { text-align: center; padding: 60px 20px; color: #718096; }
+  .spinner { width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: #1F4E79; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Empty state ── */
+  #empty { text-align: center; padding: 60px 20px; color: #a0aec0; display: none; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+    background: #2d3748; color: white; padding: 10px 18px; border-radius: 8px;
+    font-size: 14px; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ── Mobile ── */
+  @media (max-width: 640px) {
+    header { padding: 14px 16px; }
+    header h1 { font-size: 18px; }
+    .header-stats { gap: 8px; }
+    .stat { padding: 6px 10px; }
+    .toolbar { padding: 10px 12px; }
+    .table-wrap { padding: 10px 12px; }
+    th, td { padding: 8px 8px; font-size: 13px; }
+    .modal-body { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Config Banner -->
+<div id="config-banner">
+  ⚠️ <strong>Cần cấu hình:</strong> Mở file này bằng text editor, tìm dòng <code>SUPABASE_URL</code> và <code>SUPABASE_ANON_KEY</code> rồi điền thông tin từ
+  <a href="https://supabase.com/dashboard" target="_blank">Supabase Dashboard → Project Settings → API</a>
+</div>
+
+<!-- Header -->
+<header>
+  <div>
+    <h1>🏠 Quản lý sửa nhà</h1>
+    <p id="last-updated">Đang tải...</p>
+  </div>
+  <div class="header-stats">
+    <div class="stat"><div class="num" id="stat-total">—</div><div class="lbl">Tổng mục</div></div>
+    <div class="stat"><div class="num" id="stat-done">—</div><div class="lbl">Hoàn thành</div></div>
+    <div class="stat"><div class="num" id="stat-inprog">—</div><div class="lbl">Đang làm</div></div>
+  </div>
+</header>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <select id="filter-area">
+    <option value="">📍 Tất cả khu vực</option>
+    <option>WC</option><option>Bếp</option><option>Phòng ngủ</option><option>Chung</option>
+  </select>
+  <select id="filter-trao-doi">
+    <option value="">💬 Trao đổi: Tất cả</option>
+    <option>Chưa trao đổi</option><option>Đã trao đổi</option><option>Không cần</option>
+  </select>
+  <select id="filter-tien-do">
+    <option value="">🔧 Tiến độ: Tất cả</option>
+    <option>Chưa làm</option><option>Đang làm</option><option>Hoàn thành</option>
+  </select>
+  <input id="search" type="text" placeholder="🔍 Tìm hạng mục..." style="min-width:180px">
+  <div class="spacer"></div>
+  <button class="btn btn-success" onclick="openModal()">+ Thêm hạng mục</button>
+</div>
+
+<!-- Table -->
+<div class="table-wrap">
+  <div id="loading"><div class="spinner"></div>Đang kết nối Supabase...</div>
+  <div id="empty">Không có hạng mục nào phù hợp.</div>
+  <table id="main-table" style="display:none">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Khu vực</th>
+        <th>Hạng mục công việc</th>
+        <th>Mô tả / Yêu cầu</th>
+        <th>Trao đổi NT</th>
+        <th>Ngày trao đổi</th>
+        <th>Tiến độ thi công</th>
+        <th>Ngày hoàn thành</th>
+        <th>Nhà thầu</th>
+        <th>CP dự kiến (đ)</th>
+        <th>CP thực tế (đ)</th>
+        <th>Ghi chú</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="9" style="text-align:right;padding-right:12px">TỔNG CHI PHÍ</td>
+        <td class="currency" id="total-dk">—</td>
+        <td class="currency" id="total-tt">—</td>
+        <td colspan="2"></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Thêm hạng mục mới</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="f-id">
+      <div class="form-group full">
+        <label>Khu vực *</label>
+        <select id="f-khu-vuc">
+          <option>WC</option><option>Bếp</option><option>Phòng ngủ</option><option>Chung</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Hạng mục công việc *</label>
+        <input id="f-hang-muc" type="text" placeholder="VD: Chống thấm sàn WC">
+      </div>
+      <div class="form-group full">
+        <label>Mô tả / Yêu cầu chi tiết</label>
+        <textarea id="f-mo-ta" placeholder="VD: Quét 2 lớp chống thấm, thử nước 24h"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Trao đổi với nhà thầu</label>
+        <select id="f-trao-doi">
+          <option>Chưa trao đổi</option><option>Đã trao đổi</option><option>Không cần</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ngày trao đổi</label>
+        <input id="f-ngay-td" type="date">
+      </div>
+      <div class="form-group">
+        <label>Tiến độ thi công</label>
+        <select id="f-tien-do">
+          <option>Chưa làm</option><option>Đang làm</option><option>Hoàn thành</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ngày hoàn thành</label>
+        <input id="f-ngay-ht" type="date">
+      </div>
+      <div class="form-group full">
+        <label>Nhà thầu phụ trách</label>
+        <input id="f-nha-thau" type="text" placeholder="Tên hoặc SĐT nhà thầu">
+      </div>
+      <div class="form-group">
+        <label>Chi phí dự kiến (đ)</label>
+        <input id="f-cp-dk" type="number" min="0" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Chi phí thực tế (đ)</label>
+        <input id="f-cp-tt" type="number" min="0" placeholder="0">
+      </div>
+      <div class="form-group full">
+        <label>Ghi chú</label>
+        <textarea id="f-ghi-chu" placeholder="Ghi chú thêm..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:#e2e8f0;color:#2d3748" onclick="closeModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="saveTask()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+//  ⚙️  CẤU HÌNH — Điền thông tin Supabase vào đây
+// ════════════════════════════════════════════
+const SUPABASE_URL      = 'https://vnjfojwhpdbvkqqzoius.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_jL-0YulXreu9Nfh7jPb0EA_GNx5G1WG';
+// ════════════════════════════════════════════
+
+const { createClient } = supabase;
+let db, allData = [], editingId = null;
+
+function isConfigured() {
+  return SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
+}
+
+async function init() {
+  if (!isConfigured()) {
+    document.getElementById('loading').innerHTML =
+      '<p style="color:#856404;font-size:15px">⚠️ Chưa cấu hình Supabase.<br>Mở file bằng text editor và điền <code>SUPABASE_URL</code> + <code>SUPABASE_ANON_KEY</code>.</p>';
+    return;
+  }
+  document.getElementById('config-banner').classList.add('hidden');
+  db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  await loadData();
+
+  // Realtime sync
+  db.channel('cong_viec').on('postgres_changes', { event: '*', schema: 'public', table: 'cong_viec' }, () => loadData()).subscribe();
+
+  // Filters
+  ['filter-area','filter-trao-doi','filter-tien-do','search'].forEach(id => {
+    document.getElementById(id).addEventListener('input', renderTable);
+  });
+}
+
+async function loadData() {
+  const { data, error } = await db.from('cong_viec').select('*').order('thu_tu', { ascending: true }).order('created_at', { ascending: true });
+  if (error) { showToast('❌ Lỗi tải dữ liệu: ' + error.message); return; }
+  allData = data || [];
+  renderTable();
+  document.getElementById('last-updated').textContent = 'Cập nhật: ' + new Date().toLocaleTimeString('vi-VN');
+}
+
+function getFiltered() {
+  const area   = document.getElementById('filter-area').value;
+  const td     = document.getElementById('filter-trao-doi').value;
+  const tiendo = document.getElementById('filter-tien-do').value;
+  const q      = document.getElementById('search').value.toLowerCase();
+  return allData.filter(r =>
+    (!area   || r.khu_vuc === area) &&
+    (!td     || r.trao_doi === td) &&
+    (!tiendo || r.tien_do === tiendo) &&
+    (!q      || r.hang_muc.toLowerCase().includes(q) || (r.mo_ta||'').toLowerCase().includes(q))
+  );
+}
+
+function fmt(n) {
+  if (!n) return '—';
+  return Number(n).toLocaleString('vi-VN') + ' đ';
+}
+
+function areaClass(area) {
+  const map = { 'WC': 'area-wc', 'Bếp': 'area-bep', 'Phòng ngủ': 'area-phong-ngu', 'Chung': 'area-chung' };
+  return map[area] || 'area-other';
+}
+function badgeClass(val, type) {
+  const slug = val.toLowerCase().replace(/ /g,'-').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
+  // Manual map
+  const map = {
+    'chua-trao-doi': 'badge-chua-trao-doi', 'da-trao-doi': 'badge-da-trao-doi', 'khong-can': 'badge-khong-can',
+    'chua-lam': 'badge-chua-lam', 'dang-lam': 'badge-dang-lam', 'hoan-thanh': 'badge-hoan-thanh',
+  };
+  return map[slug] || '';
+}
+
+function renderTable() {
+  const rows = getFiltered();
+  const tbody = document.getElementById('table-body');
+  const table = document.getElementById('main-table');
+  const empty = document.getElementById('empty');
+
+  // Stats (from full data)
+  document.getElementById('stat-total').textContent  = allData.length;
+  document.getElementById('stat-done').textContent   = allData.filter(r => r.tien_do === 'Hoàn thành').length;
+  document.getElementById('stat-inprog').textContent = allData.filter(r => r.tien_do === 'Đang làm').length;
+  document.getElementById('loading').style.display   = 'none';
+
+  if (rows.length === 0) { table.style.display='none'; empty.style.display='block'; return; }
+  table.style.display = ''; empty.style.display = 'none';
+
+  let sumDK = 0, sumTT = 0;
+  tbody.innerHTML = rows.map((r, i) => {
+    sumDK += r.chi_phi_du_kien || 0;
+    sumTT += r.chi_phi_thuc_te || 0;
+    const bc1 = badgeClass(r.trao_doi, 'td');
+    const bc2 = badgeClass(r.tien_do, 'tiendo');
+    return `<tr>
+      <td style="color:#a0aec0;font-size:12px">${i+1}</td>
+      <td><span class="area-tag ${areaClass(r.khu_vuc)}">${r.khu_vuc}</span></td>
+      <td style="font-weight:600">${r.hang_muc}</td>
+      <td class="cell-note"><span title="${r.mo_ta||''}">${r.mo_ta||'—'}</span></td>
+      <td>
+        <select class="inline-select ${bc1}" onchange="updateField('${r.id}','trao_doi',this.value,this)">
+          ${['Chưa trao đổi','Đã trao đổi','Không cần'].map(o=>`<option${r.trao_doi===o?' selected':''}>${o}</option>`).join('')}
+        </select>
+      </td>
+      <td style="white-space:nowrap;color:#718096;font-size:13px">${r.ngay_trao_doi||'—'}</td>
+      <td>
+        <select class="inline-select ${bc2}" onchange="updateField('${r.id}','tien_do',this.value,this)">
+          ${['Chưa làm','Đang làm','Hoàn thành'].map(o=>`<option${r.tien_do===o?' selected':''}>${o}</option>`).join('')}
+        </select>
+      </td>
+      <td style="white-space:nowrap;color:#718096;font-size:13px">${r.ngay_hoan_thanh||'—'}</td>
+      <td style="color:#4a5568">${r.nha_thau||'—'}</td>
+      <td class="currency" style="color:#2d3748">${fmt(r.chi_phi_du_kien)}</td>
+      <td class="currency" style="color:#1e8449;font-weight:600">${fmt(r.chi_phi_thuc_te)}</td>
+      <td class="cell-note"><span title="${r.ghi_chu||''}">${r.ghi_chu||'—'}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn" style="background:#edf2f7;color:#2d3748;font-size:12px;padding:4px 10px;margin-right:4px" onclick="editTask('${r.id}')">✏️</button>
+        <button class="btn btn-danger" onclick="deleteTask('${r.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('total-dk').textContent = fmt(sumDK);
+  document.getElementById('total-tt').textContent = fmt(sumTT);
+}
+
+async function updateField(id, field, value, el) {
+  const old = allData.find(r => r.id === id)?.[field];
+  const { error } = await db.from('cong_viec').update({ [field]: value }).eq('id', id);
+  if (error) { showToast('❌ Lỗi cập nhật'); el.value = old; return; }
+  const row = allData.find(r => r.id === id);
+  if (row) row[field] = value;
+  // Restyle the select
+  const allBadges = [...Object.keys({trao_doi:1,tien_do:1})].flatMap(_ =>
+    ['badge-chua-trao-doi','badge-da-trao-doi','badge-khong-can','badge-chua-lam','badge-dang-lam','badge-hoan-thanh']
+  );
+  el.className = 'inline-select ' + badgeClass(value);
+  showToast('✅ Đã cập nhật');
+}
+
+function openModal(task = null) {
+  editingId = task ? task.id : null;
+  document.getElementById('modal-title').textContent = task ? 'Chỉnh sửa hạng mục' : 'Thêm hạng mục mới';
+  document.getElementById('f-id').value        = task?.id || '';
+  document.getElementById('f-khu-vuc').value   = task?.khu_vuc || 'WC';
+  document.getElementById('f-hang-muc').value  = task?.hang_muc || '';
+  document.getElementById('f-mo-ta').value     = task?.mo_ta || '';
+  document.getElementById('f-trao-doi').value  = task?.trao_doi || 'Chưa trao đổi';
+  document.getElementById('f-ngay-td').value   = task?.ngay_trao_doi || '';
+  document.getElementById('f-tien-do').value   = task?.tien_do || 'Chưa làm';
+  document.getElementById('f-ngay-ht').value   = task?.ngay_hoan_thanh || '';
+  document.getElementById('f-nha-thau').value  = task?.nha_thau || '';
+  document.getElementById('f-cp-dk').value     = task?.chi_phi_du_kien || '';
+  document.getElementById('f-cp-tt').value     = task?.chi_phi_thuc_te || '';
+  document.getElementById('f-ghi-chu').value   = task?.ghi_chu || '';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+async function saveTask() {
+  const hang_muc = document.getElementById('f-hang-muc').value.trim();
+  if (!hang_muc) { showToast('⚠️ Vui lòng nhập tên hạng mục'); return; }
+  const payload = {
+    khu_vuc: document.getElementById('f-khu-vuc').value,
+    hang_muc,
+    mo_ta:             document.getElementById('f-mo-ta').value.trim() || null,
+    trao_doi:          document.getElementById('f-trao-doi').value,
+    ngay_trao_doi:     document.getElementById('f-ngay-td').value || null,
+    tien_do:           document.getElementById('f-tien-do').value,
+    ngay_hoan_thanh:   document.getElementById('f-ngay-ht').value || null,
+    nha_thau:          document.getElementById('f-nha-thau').value.trim() || null,
+    chi_phi_du_kien:   parseInt(document.getElementById('f-cp-dk').value) || 0,
+    chi_phi_thuc_te:   parseInt(document.getElementById('f-cp-tt').value) || 0,
+    ghi_chu:           document.getElementById('f-ghi-chu').value.trim() || null,
+  };
+  let error;
+  if (editingId) {
+    ({ error } = await db.from('cong_viec').update(payload).eq('id', editingId));
+  } else {
+    ({ error } = await db.from('cong_viec').insert(payload));
+  }
+  if (error) { showToast('❌ Lỗi lưu: ' + error.message); return; }
+  showToast(editingId ? '✅ Đã cập nhật' : '✅ Đã thêm hạng mục');
+  closeModal();
+  await loadData();
+}
+
+function editTask(id) {
+  const task = allData.find(r => r.id === id);
+  if (task) openModal(task);
+}
+
+async function deleteTask(id) {
+  if (!confirm('Xoá hạng mục này?')) return;
+  const { error } = await db.from('cong_viec').delete().eq('id', id);
+  if (error) { showToast('❌ Lỗi xoá'); return; }
+  showToast('🗑 Đã xoá');
+  await loadData();
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+
+init();
+</script>
+</body>
+</html>
