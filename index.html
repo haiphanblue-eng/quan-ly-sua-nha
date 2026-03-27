@@ -106,6 +106,12 @@
   /* ── Currency ── */
   .currency { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+  /* ── Sortable headers ── */
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { background: #16396b; }
+  .sort-icon { font-style: normal; margin-left: 4px; opacity: 0.4; font-size: 11px; }
+  .sort-icon.active { opacity: 1; }
+
   /* ── Notes cell ── */
   .cell-note { max-width: 180px; }
   .cell-note span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
@@ -222,18 +228,18 @@
   <div id="empty">Không có hạng mục nào phù hợp.</div>
   <table id="main-table" style="display:none">
     <thead>
-      <tr>
+      <tr id="thead-row">
         <th>#</th>
-        <th>Khu vực</th>
-        <th>Hạng mục công việc</th>
+        <th onclick="sortTable('khu_vuc')" class="sortable">Khu vực <span class="sort-icon" data-col="khu_vuc"></span></th>
+        <th onclick="sortTable('hang_muc')" class="sortable">Hạng mục công việc <span class="sort-icon" data-col="hang_muc"></span></th>
         <th>Mô tả / Yêu cầu</th>
-        <th>Trao đổi NT</th>
-        <th>Ngày trao đổi</th>
-        <th>Tiến độ thi công</th>
-        <th>Ngày hoàn thành</th>
-        <th>Nhà thầu</th>
-        <th>CP dự kiến (đ)</th>
-        <th>CP thực tế (đ)</th>
+        <th onclick="sortTable('trao_doi')" class="sortable">Trao đổi NT <span class="sort-icon" data-col="trao_doi"></span></th>
+        <th onclick="sortTable('ngay_trao_doi')" class="sortable">Ngày trao đổi <span class="sort-icon" data-col="ngay_trao_doi"></span></th>
+        <th onclick="sortTable('tien_do')" class="sortable">Tiến độ thi công <span class="sort-icon" data-col="tien_do"></span></th>
+        <th onclick="sortTable('ngay_hoan_thanh')" class="sortable">Ngày hoàn thành <span class="sort-icon" data-col="ngay_hoan_thanh"></span></th>
+        <th onclick="sortTable('nha_thau')" class="sortable">Nhà thầu <span class="sort-icon" data-col="nha_thau"></span></th>
+        <th onclick="sortTable('chi_phi_du_kien')" class="sortable">CP dự kiến (đ) <span class="sort-icon" data-col="chi_phi_du_kien"></span></th>
+        <th onclick="sortTable('chi_phi_thuc_te')" class="sortable">CP thực tế (đ) <span class="sort-icon" data-col="chi_phi_thuc_te"></span></th>
         <th>Ghi chú</th>
         <th></th>
       </tr>
@@ -329,7 +335,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_jL-0YulXreu9Nfh7jPb0EA_GNx5G1WG';
 // ════════════════════════════════════════════
 
 const { createClient } = supabase;
-let db, allData = [], editingId = null;
+let db, allData = [], editingId = null, sortCol = null, sortDir = 1;
 
 function isConfigured() {
   return SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
@@ -394,8 +400,27 @@ function badgeClass(val, type) {
   return map[slug] || '';
 }
 
+function sortTable(col) {
+  // Toggle direction if same column, else sort ascending
+  if (sortCol === col) {
+    sortDir *= -1;
+  } else {
+    sortCol = col;
+    sortDir = 1;
+  }
+  renderTable();
+}
+
 function renderTable() {
-  const rows = getFiltered();
+  let rows = getFiltered();
+  // Apply sort if a column is selected
+  if (sortCol) {
+    rows = [...rows].sort((a, b) => {
+      const av = a[sortCol] ?? '';
+      const bv = b[sortCol] ?? '';
+      return av < bv ? -sortDir : av > bv ? sortDir : 0;
+    });
+  }
   const tbody = document.getElementById('table-body');
   const table = document.getElementById('main-table');
   const empty = document.getElementById('empty');
@@ -445,6 +470,18 @@ function renderTable() {
 
   document.getElementById('total-dk').textContent = fmt(sumDK);
   document.getElementById('total-tt').textContent = fmt(sumTT);
+
+  // Update sort arrow indicators
+  document.querySelectorAll('.sort-icon').forEach(el => {
+    const col = el.dataset.col;
+    if (col === sortCol) {
+      el.textContent = sortDir === 1 ? '▲' : '▼';
+      el.classList.add('active');
+    } else {
+      el.textContent = '⇅';
+      el.classList.remove('active');
+    }
+  });
 }
 
 async function updateField(id, field, value, el) {
