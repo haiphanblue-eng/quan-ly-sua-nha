@@ -61,13 +61,11 @@
   thead tr { background: #1F4E79; color: white; }
   th { padding: 12px 10px; text-align: left; font-weight: 600; white-space: nowrap; font-size: 13px; }
   td { padding: 10px; vertical-align: middle; border-bottom: 1px solid #e9edf2; }
-  /* Sticky first 3 columns (#, Khu vực, Hạng mục) — left offsets set by JS */
-  th.sticky-col, td.sticky-col { position: sticky; z-index: 2; background: white; }
-  thead th.sticky-col { background: #1F4E79; z-index: 3; }
-  td.sticky-col-last { box-shadow: 2px 0 4px rgba(0,0,0,0.08); }
-  th.sticky-col-last { box-shadow: 2px 0 4px rgba(0,0,0,0.08); }
-  tbody tr:hover td.sticky-col { background: #f7fafc; }
-  .total-row td.sticky-col { background: #1F4E79 !important; }
+  /* Sticky "Hạng mục công việc" column (3rd col) */
+  th:nth-child(3), td:nth-child(3) { position: sticky; left: 0; z-index: 2; background: white; box-shadow: 2px 0 4px rgba(0,0,0,0.08); }
+  thead th:nth-child(3) { background: #1F4E79; z-index: 3; }
+  tbody tr:hover td:nth-child(3) { background: #f7fafc; }
+  .total-row td:nth-child(3) { background: #1F4E79 !important; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: #f7fafc; }
 
@@ -483,37 +481,6 @@ function renderTable() {
     }
   });
 
-  // Apply sticky left offsets based on actual rendered column widths
-  applyStickyColumns();
-}
-
-function applyStickyColumns() {
-  const STICKY_COUNT = 3;
-  const table = document.getElementById('main-table');
-  if (!table || table.style.display === 'none') return;
-  const headerCells = table.querySelectorAll('thead th');
-  if (headerCells.length < STICKY_COUNT) return;
-
-  // Measure actual widths from header cells
-  const widths = [];
-  for (let i = 0; i < STICKY_COUNT; i++) {
-    widths.push(headerCells[i].getBoundingClientRect().width);
-  }
-
-  // Apply to all rows (thead, tbody, tfoot)
-  table.querySelectorAll('tr').forEach(row => {
-    const cells = row.children;
-    let leftOffset = 0;
-    for (let i = 0; i < STICKY_COUNT && i < cells.length; i++) {
-      const cell = cells[i];
-      cell.classList.add('sticky-col');
-      cell.style.left = leftOffset + 'px';
-      if (i === STICKY_COUNT - 1) {
-        cell.classList.add('sticky-col-last');
-      }
-      leftOffset += widths[i];
-    }
-  });
 }
 
 async function updateField(id, field, value, el) {
