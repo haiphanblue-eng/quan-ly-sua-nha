@@ -57,17 +57,17 @@
 
   /* ── Table Container ── */
   .table-wrap { overflow-x: auto; padding: 16px 20px; }
-  table { width: 100%; border-collapse: separate; border-spacing: 0; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); font-size: 14px; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); font-size: 14px; }
   thead tr { background: #1F4E79; color: white; }
   th { padding: 12px 10px; text-align: left; font-weight: 600; white-space: nowrap; font-size: 13px; }
   td { padding: 10px; vertical-align: middle; border-bottom: 1px solid #e9edf2; }
-  /* Sticky first 3 columns (#, Khu vực, Hạng mục) when scrolling horizontally */
-  th:nth-child(1), td:nth-child(1) { position: sticky; left: 0; z-index: 2; background: white; min-width: 36px; }
-  th:nth-child(2), td:nth-child(2) { position: sticky; left: 36px; z-index: 2; background: white; min-width: 80px; }
-  th:nth-child(3), td:nth-child(3) { position: sticky; left: 116px; z-index: 2; background: white; min-width: 160px; box-shadow: 2px 0 4px rgba(0,0,0,0.08); }
-  thead th:nth-child(1), thead th:nth-child(2), thead th:nth-child(3) { background: #1F4E79; z-index: 3; }
-  tbody tr:hover td:nth-child(1), tbody tr:hover td:nth-child(2), tbody tr:hover td:nth-child(3) { background: #f7fafc; }
-  .total-row td:nth-child(1), .total-row td:nth-child(2), .total-row td:nth-child(3) { background: #1F4E79 !important; }
+  /* Sticky first 3 columns (#, Khu vực, Hạng mục) — left offsets set by JS */
+  th.sticky-col, td.sticky-col { position: sticky; z-index: 2; background: white; }
+  thead th.sticky-col { background: #1F4E79; z-index: 3; }
+  td.sticky-col-last { box-shadow: 2px 0 4px rgba(0,0,0,0.08); }
+  th.sticky-col-last { box-shadow: 2px 0 4px rgba(0,0,0,0.08); }
+  tbody tr:hover td.sticky-col { background: #f7fafc; }
+  .total-row td.sticky-col { background: #1F4E79 !important; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: #f7fafc; }
 
@@ -480,6 +480,38 @@ function renderTable() {
     } else {
       el.textContent = '⇅';
       el.classList.remove('active');
+    }
+  });
+
+  // Apply sticky left offsets based on actual rendered column widths
+  applyStickyColumns();
+}
+
+function applyStickyColumns() {
+  const STICKY_COUNT = 3;
+  const table = document.getElementById('main-table');
+  if (!table || table.style.display === 'none') return;
+  const headerCells = table.querySelectorAll('thead th');
+  if (headerCells.length < STICKY_COUNT) return;
+
+  // Measure actual widths from header cells
+  const widths = [];
+  for (let i = 0; i < STICKY_COUNT; i++) {
+    widths.push(headerCells[i].getBoundingClientRect().width);
+  }
+
+  // Apply to all rows (thead, tbody, tfoot)
+  table.querySelectorAll('tr').forEach(row => {
+    const cells = row.children;
+    let leftOffset = 0;
+    for (let i = 0; i < STICKY_COUNT && i < cells.length; i++) {
+      const cell = cells[i];
+      cell.classList.add('sticky-col');
+      cell.style.left = leftOffset + 'px';
+      if (i === STICKY_COUNT - 1) {
+        cell.classList.add('sticky-col-last');
+      }
+      leftOffset += widths[i];
     }
   });
 }
