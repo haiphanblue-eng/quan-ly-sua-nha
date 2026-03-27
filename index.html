@@ -61,14 +61,13 @@
   thead tr { background: #1F4E79; color: white; }
   th { padding: 12px 10px; text-align: left; font-weight: 600; white-space: nowrap; font-size: 13px; }
   td { padding: 10px; vertical-align: middle; border-bottom: 1px solid #e9edf2; }
-  /* Sticky "Hạng mục công việc" column (3rd col) when scrolling horizontally */
-  th:nth-child(3), td:nth-child(3) {
-    position: sticky; left: 0; z-index: 2;
-    background: white;
-    box-shadow: 2px 0 4px rgba(0,0,0,0.08);
-  }
-  thead th:nth-child(3) { background: #1F4E79; z-index: 3; }
-  .total-row td:nth-child(3) { background: #1F4E79 !important; }
+  /* Sticky first 3 columns (#, Khu vực, Hạng mục) when scrolling horizontally */
+  th:nth-child(1), td:nth-child(1) { position: sticky; left: 0; z-index: 2; background: white; min-width: 36px; }
+  th:nth-child(2), td:nth-child(2) { position: sticky; left: 36px; z-index: 2; background: white; min-width: 80px; }
+  th:nth-child(3), td:nth-child(3) { position: sticky; left: 116px; z-index: 2; background: white; min-width: 160px; box-shadow: 2px 0 4px rgba(0,0,0,0.08); }
+  thead th:nth-child(1), thead th:nth-child(2), thead th:nth-child(3) { background: #1F4E79; z-index: 3; }
+  tbody tr:hover td:nth-child(1), tbody tr:hover td:nth-child(2), tbody tr:hover td:nth-child(3) { background: #f7fafc; }
+  .total-row td:nth-child(1), .total-row td:nth-child(2), .total-row td:nth-child(3) { background: #1F4E79 !important; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: #f7fafc; }
 
@@ -135,6 +134,7 @@
   .modal-header {
     background: #1F4E79; color: white; padding: 16px 20px;
     display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0; z-index: 10;
   }
   .modal-header h2 { font-size: 16px; }
   .modal-close { background: none; border: none; color: white; font-size: 22px; cursor: pointer; line-height: 1; }
@@ -150,7 +150,7 @@
     border-color: #2e6da4; box-shadow: 0 0 0 2px rgba(46,109,164,0.15);
   }
   .form-group textarea { resize: vertical; min-height: 60px; }
-  .modal-footer { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; }
+  .modal-footer { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; position: sticky; bottom: 0; background: white; z-index: 10; }
 
   /* ── Loading ── */
   #loading { text-align: center; padding: 60px 20px; color: #718096; }
